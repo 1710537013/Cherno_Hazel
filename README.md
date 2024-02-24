@@ -1,1 +1,2 @@
-# Cherno_Hazel
+# Hazel
+Hazel Engine
