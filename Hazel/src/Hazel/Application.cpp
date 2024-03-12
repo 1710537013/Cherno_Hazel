@@ -14,26 +14,6 @@ namespace Hazel {
 
 	Application* Application::s_Instance = nullptr;
 
-	static GLenum ShaderDataTypeToOpenGLBaseType(ShaderDataType type)
-	{
-		switch (type)
-		{
-		case Hazel::ShaderDataType::Float:    return GL_FLOAT;
-		case Hazel::ShaderDataType::Float2:   return GL_FLOAT;
-		case Hazel::ShaderDataType::Float3:   return GL_FLOAT;
-		case Hazel::ShaderDataType::Float4:   return GL_FLOAT;
-		case Hazel::ShaderDataType::Mat3:     return GL_FLOAT;
-		case Hazel::ShaderDataType::Mat4:     return GL_FLOAT;
-		case Hazel::ShaderDataType::Int:      return GL_INT;
-		case Hazel::ShaderDataType::Int2:     return GL_INT;
-		case Hazel::ShaderDataType::Int3:     return GL_INT;
-		case Hazel::ShaderDataType::Int4:     return GL_INT;
-		case Hazel::ShaderDataType::Bool:     return GL_BOOL;
-		}
-
-		HZ_CORE_ASSERT(false, "Unknown ShaderDataType!");
-		return 0;
-	}
 
 	Application::Application() 
 	{
@@ -53,11 +33,10 @@ namespace Hazel {
 
 		unsigned int indices[3] = { 0, 1, 2 };
 		
-		glGenVertexArrays(1, &m_VertexArray);
-		glBindVertexArray(m_VertexArray);
+		m_vertexArray.reset(VertexArray::Create());
 
 		m_vertexBuffer.reset( VertexBuffer::Create(vertices, sizeof(vertices)));
-		m_indexBuffer.reset(IndexBuffer::Create(indices, sizeof(indices) / sizeof(uint32_t)));
+		std::shared_ptr<IndexBuffer> m_indexBuffer(IndexBuffer::Create(indices, sizeof(indices) / sizeof(uint32_t)));
 		/*m_vertexBuffer->Bind();
 		m_indexBuffer->Bind();*/
 
@@ -66,15 +45,8 @@ namespace Hazel {
 		);
 		m_vertexBuffer->SetLayout(bufferLayout);
 
-		BufferLayout layout = m_vertexBuffer->GetLayout();
-		uint32_t index = 0;
-		for (const BufferElement& ele : layout) {
-			glEnableVertexAttribArray(index);
-			glVertexAttribPointer(index, ele.GetComponentCount(), ShaderDataTypeToOpenGLBaseType(ele.dataType),
-				ele.isNormalize, layout.GetStride(), (const void*)ele.offset);
-				index++;
-		}
-
+		m_vertexArray->AddVertexBuffer(m_vertexBuffer);
+		m_vertexArray->SetIndexBuffer(m_indexBuffer);
 
 		std::string vertexSrc = R"(
 			#version 330 core
@@ -104,6 +76,50 @@ namespace Hazel {
 		)";
 
 		m_Shader.reset(new Shader(vertexSrc, fragmentSrc));
+
+		m_SquareVA.reset(VertexArray::Create());
+		float squareVertices[3 * 4] = {
+	-0.75f, -0.75f, 0.0f,
+	 0.75f, -0.75f, 0.0f,
+	 0.75f,  0.75f, 0.0f,
+	-0.75f,  0.75f, 0.0f
+		};
+		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
+		std::shared_ptr<VertexBuffer> square_vertexBuffer(VertexBuffer::Create(squareVertices, sizeof(squareVertices)));
+		//std::shared_ptr<IndexBuffer> square_indexBuffer(IndexBuffer::Create(squareIndices ,std::size1(squareIndices)));
+		std::shared_ptr<IndexBuffer> square_indexBuffer(IndexBuffer::Create(squareIndices ,sizeof(squareIndices)/sizeof(uint32_t)));
+		BufferLayout square_layout{
+			{ {ShaderDataType::Float3, "position"}}
+		};
+		square_vertexBuffer->SetLayout(square_layout);
+
+		m_SquareVA->AddVertexBuffer(square_vertexBuffer);
+		m_SquareVA->SetIndexBuffer(square_indexBuffer);
+		//square_vertexBuffer->SetLayout()
+		std::string blueShaderVertexSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) in vec3 a_Position;
+			out vec3 v_Position;
+			void main()
+			{
+				v_Position = a_Position;
+				gl_Position = vec4(a_Position, 1.0);	
+			}
+		)";
+
+		std::string blueShaderFragmentSrc = R"(
+			#version 330 core
+			
+			layout(location = 0) out vec4 color;
+			in vec3 v_Position;
+			void main()
+			{
+				color = vec4(0.2, 0.3, 0.8, 1.0);
+			}
+		)";
+
+		m_BlueShader.reset(new Shader(blueShaderVertexSrc, blueShaderFragmentSrc));
 	}
 
 	Application::~Application()
@@ -141,9 +157,15 @@ namespace Hazel {
 		{
 			glClearColor(0.1f, 0.1f, 0.1f, 1);
 			glClear(GL_COLOR_BUFFER_BIT);
+
+
+			m_SquareVA->Bind();
+			m_BlueShader->Bind();
+			glDrawElements(GL_TRIANGLES, m_SquareVA->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+
 			m_Shader->Bind();
-			glBindVertexArray(m_VertexArray);
-			glDrawElements(GL_TRIANGLES, m_indexBuffer->GetCount(), GL_UNSIGNED_INT, nullptr);
+			m_vertexArray->Bind();
+			glDrawElements(GL_TRIANGLES, m_vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
 
 			for (Layer* layer : m_LayerStack)
 				layer->OnUpdate();

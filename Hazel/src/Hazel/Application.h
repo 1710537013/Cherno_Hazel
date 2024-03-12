@@ -10,6 +10,7 @@
 #include "Hazel/ImGui/ImGuiLayer.h"
 #include"Renderer/Shader.h"
 #include "Renderer/Buffer.h"
+#include "Renderer/VertexArray.h"
 
 namespace Hazel {
 
@@ -37,10 +38,12 @@ namespace Hazel {
 		bool m_Running = true;
 		LayerStack m_LayerStack;
 
-		unsigned int m_VertexArray;
-		std::unique_ptr<VertexBuffer> m_vertexBuffer;
-		std::unique_ptr<IndexBuffer> m_indexBuffer;
-		std::unique_ptr<Shader> m_Shader;
+		std::shared_ptr<VertexArray> m_vertexArray;
+		std::shared_ptr<VertexBuffer> m_vertexBuffer;
+
+		std::shared_ptr<Shader> m_Shader;
+		std::shared_ptr<Shader> m_BlueShader;
+		std::shared_ptr<VertexArray> m_SquareVA;
 	private:
 		static Application* s_Instance;
 	};
