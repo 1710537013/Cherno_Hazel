@@ -7,6 +7,9 @@
 
 #include "Input.h"
 #include <Platform/OpenGL/OpenGLBuffer.h>
+#include <Platform/OpenGL/OpenGLVertexArray.h>
+#include "Renderer/Renderer.h"
+#include "Renderer/RenderCommand.h"
 
 namespace Hazel {
 
@@ -34,6 +37,8 @@ namespace Hazel {
 		unsigned int indices[3] = { 0, 1, 2 };
 		
 		m_vertexArray.reset(VertexArray::Create());
+		//m_vertexArray = std::make_shared<OpenGLVertexArray>(VertexArray::Create());   为什么这样不行
+		//m_vertexArray = std::make_shared<VertexArray>(VertexArray::Create());   //为什么这样不行
 
 		m_vertexBuffer.reset( VertexBuffer::Create(vertices, sizeof(vertices)));
 		std::shared_ptr<IndexBuffer> m_indexBuffer(IndexBuffer::Create(indices, sizeof(indices) / sizeof(uint32_t)));
@@ -79,10 +84,10 @@ namespace Hazel {
 
 		m_SquareVA.reset(VertexArray::Create());
 		float squareVertices[3 * 4] = {
-	-0.75f, -0.75f, 0.0f,
-	 0.75f, -0.75f, 0.0f,
-	 0.75f,  0.75f, 0.0f,
-	-0.75f,  0.75f, 0.0f
+			-0.75f, -0.75f, 0.0f,
+			 0.75f, -0.75f, 0.0f,
+			 0.75f,  0.75f, 0.0f,
+			-0.75f,  0.75f, 0.0f
 		};
 		uint32_t squareIndices[6] = { 0, 1, 2, 2, 3, 0 };
 		std::shared_ptr<VertexBuffer> square_vertexBuffer(VertexBuffer::Create(squareVertices, sizeof(squareVertices)));
@@ -155,17 +160,19 @@ namespace Hazel {
 	{
 		while (m_Running)
 		{
-			glClearColor(0.1f, 0.1f, 0.1f, 1);
-			glClear(GL_COLOR_BUFFER_BIT);
+			RenderCommand::SetClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1));
+			RenderCommand::Clear();
 
+			Renderer::BeginScene();
 
-			m_SquareVA->Bind();
 			m_BlueShader->Bind();
-			glDrawElements(GL_TRIANGLES, m_SquareVA->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+			Renderer::Submit(m_SquareVA);
+
 
 			m_Shader->Bind();
-			m_vertexArray->Bind();
-			glDrawElements(GL_TRIANGLES, m_vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+			Renderer::Submit(m_vertexArray);
+
+			Renderer::EndScene();
 
 			for (Layer* layer : m_LayerStack)
 				layer->OnUpdate();
