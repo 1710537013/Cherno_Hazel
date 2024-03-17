@@ -1,17 +1,24 @@
 #include "hzpch.h"
-#include "Renderer.h"
 #include"RenderCommand.h"
+#include"Renderer.h"
 
 namespace Hazel {
-	void Renderer::Submit(const std::shared_ptr<VertexArray>& vertexArray)
+	Renderer::SceneData* Renderer::m_SceneData = new Renderer::SceneData();
+
+	void Renderer::BeginScene(OrthographyCamera& camera)
 	{
-		//RendererAPI::DrawIndexed(vertexArray)
-		RenderCommand::DrawIndexed(vertexArray);
-	}
-	void Renderer::BeginScene()
-	{
+		m_SceneData->ViewProjectionMatrix = camera.GetViewProjMatrix();
 	}
 	void Renderer::EndScene()
 	{
+	}
+
+	void Renderer::Submit(const std::shared_ptr<Shader>& shader, const std::shared_ptr<VertexArray>& vertexArray)
+	{
+
+		shader->Bind();
+		shader->UploadUniformMat4("viewProjection", m_SceneData->ViewProjectionMatrix);
+		//RendererAPI::DrawIndexed(vertexArray)
+		RenderCommand::DrawIndexed(vertexArray);
 	}
 }
